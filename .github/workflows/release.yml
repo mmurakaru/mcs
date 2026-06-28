@@ -36,7 +36,9 @@ jobs:
         run: opam install dune --yes
 
       - name: Build
-        run: opam exec -- dune build --release
+        # target the exe explicitly: in the release profile a bare `dune build`
+        # only builds @install, which omits an executable that has no public_name
+        run: opam exec -- dune build --release bin/mcs.exe
         env:
           MCS_VERSION: ${{ github.ref_name }}
 
