@@ -219,7 +219,15 @@ let test_reconcile () =
     (String.length summarized >= 3 && String.sub summarized (String.length summarized - 3) 3 = "...");
   let core = String.sub summarized 0 (String.length summarized - 3) in
   check "summary does not cut mid-word"
-    (List.for_all (fun token -> token = "word") (String.split_on_char ' ' core))
+    (List.for_all (fun token -> token = "word") (String.split_on_char ' ' core));
+  (* a leading code block is skipped - the summary is real prose, not "```bash" *)
+  let fenced = "# T\n\n```bash\ngit reset --hard\n```\n\nReal prose here.\n" in
+  let fenced_summary =
+    match Frontmatter.parse (Reconcile.reconcile_content ~today:"2026-06-28" ~relative_path:"n/f.md" fenced) with
+    | Some f, _ -> scalar f "summary"
+    | None, _ -> ""
+  in
+  expect_equal "summary skips fenced code" fenced_summary "Real prose here."
 
 let test_id_scheme () =
   expect_equal "area: top folder" (Reconcile.area_of_path "lokalise/docs/git.md") "lokalise";

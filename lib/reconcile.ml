@@ -21,14 +21,24 @@ let first_heading_title body =
 (* first line of real prose - skips blanks, headings, and rule lines.
    Used to backfill [summary] when the human wrote none. *)
 let first_prose_line body =
-  List.find_map
-    (fun line ->
+  let is_fence stripped =
+    String.length stripped >= 3
+    && (String.sub stripped 0 3 = "```" || String.sub stripped 0 3 = "~~~")
+  in
+  (* skip blanks, headings, thematic breaks, and fenced code blocks entirely, so
+     the summary is real prose rather than a "```bash" marker or a line of code *)
+  let rec scan ~in_fence = function
+    | [] -> None
+    | line :: rest ->
       let stripped = String.trim line in
-      if stripped = "" then None
-      else if stripped.[0] = '#' then None
-      else if stripped = "---" || stripped = "***" || stripped = "___" then None
-      else Some stripped)
-    (lines body)
+      if is_fence stripped then scan ~in_fence:(not in_fence) rest
+      else if in_fence then scan ~in_fence rest
+      else if stripped = "" then scan ~in_fence rest
+      else if stripped.[0] = '#' then scan ~in_fence rest
+      else if stripped = "---" || stripped = "***" || stripped = "___" then scan ~in_fence rest
+      else Some stripped
+  in
+  scan ~in_fence:false (lines body)
 
 let truncate_summary text =
   let maximum_length = 200 in
