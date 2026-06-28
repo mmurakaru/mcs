@@ -31,8 +31,17 @@ let first_prose_line body =
     (lines body)
 
 let truncate_summary text =
-  let maximum_length = 280 in
-  if String.length text <= maximum_length then text else String.sub text 0 maximum_length
+  let maximum_length = 200 in
+  if String.length text <= maximum_length then text
+  else
+    let clipped = String.sub text 0 maximum_length in
+    (* back up to the last word boundary so we never cut mid-word *)
+    let trimmed =
+      match String.rindex_opt clipped ' ' with
+      | Some space when space > 0 -> String.sub clipped 0 space
+      | _ -> clipped
+    in
+    trimmed ^ "..."
 
 (* --- additive backfill --- *)
 

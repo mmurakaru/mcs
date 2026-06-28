@@ -205,7 +205,21 @@ let test_reconcile () =
   in
   expect_equal "seed: id uses seeded type" (scalar scaffolded "id") "notes-decision-adopt-x";
   expect_equal "seed: status from decision default" (scalar scaffolded "status") "proposed";
-  expect_equal "seed: summary preserved" (scalar scaffolded "summary") "T"
+  expect_equal "seed: summary preserved" (scalar scaffolded "summary") "T";
+  (* long first lines are summarized on a word boundary, never mid-word *)
+  let long_line = String.concat " " (List.init 60 (fun _ -> "word")) in
+  let long_note = Printf.sprintf "%s\n" long_line in
+  let summarized =
+    let reconciled = Reconcile.reconcile_content ~today:"2026-06-28" ~relative_path:"n/x.md" long_note in
+    let frontmatter, _ = Frontmatter.parse reconciled in
+    match frontmatter with Some f -> scalar f "summary" | None -> ""
+  in
+  check "long summary is truncated" (String.length summarized < String.length long_line);
+  check "summary ends with ellipsis"
+    (String.length summarized >= 3 && String.sub summarized (String.length summarized - 3) 3 = "...");
+  let core = String.sub summarized 0 (String.length summarized - 3) in
+  check "summary does not cut mid-word"
+    (List.for_all (fun token -> token = "word") (String.split_on_char ' ' core))
 
 let test_id_scheme () =
   expect_equal "area: top folder" (Reconcile.area_of_path "lokalise/docs/git.md") "lokalise";
