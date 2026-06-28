@@ -81,14 +81,21 @@ mcs reconcile [path] [--convert-links S]  # additive backfill + index rebuild
 
 ### Install
 
-Adopters download a prebuilt single binary from
-[Releases](../../releases) (macOS arm64/x64, Linux) - no OCaml toolchain needed.
-
-Contributors build from source:
+One line - downloads the prebuilt binary for your platform (macOS arm64/x64, Linux)
+to `~/.local/bin`, no OCaml toolchain needed:
 
 ```sh
-dune build      # build the mcs binary -> _build/default/bin/mcs.exe
-dune test       # run the test suite
+curl -fsSL https://raw.githubusercontent.com/mmurakaru/mcs/main/install.sh | sh
+```
+
+Override the target with `MCS_VERSION` / `MCS_INSTALL_DIR`. Or grab a binary by hand
+from [Releases](../../releases) and put it on your PATH.
+
+Contributors build from source (needs OCaml + dune):
+
+```sh
+dune build --release bin/mcs.exe   # -> _build/default/bin/mcs.exe
+dune test                          # run the test suite
 ```
 
 ## Adopt it
