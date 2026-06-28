@@ -94,9 +94,11 @@ from [Releases](../../releases) and put it on your PATH.
 Contributors build from source (needs OCaml + dune):
 
 ```sh
-dune build --release bin/mcs.exe   # -> _build/default/bin/mcs.exe
-dune test                          # run the test suite
+dune build    # mcs binary -> _build/default/bin/mcs.exe
+dune test     # run the test suite
 ```
+
+(For an optimized binary to install on your PATH: `dune build --release bin/mcs.exe`.)
 
 ## Adopt it
 
