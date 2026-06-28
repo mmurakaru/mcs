@@ -30,7 +30,7 @@ let default =
   { link_style = Hybrid;
     areas = [ "projects"; "areas"; "resources"; "archive" ];
     index_path = "index.json";
-    index_moc_path = "index.md";
+    index_moc_path = "_index.md";
     log_path = "log.md";
     ignore = [ ".git"; "_opam"; "_build"; "node_modules"; ".obsidian" ]
   }

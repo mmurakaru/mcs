@@ -156,30 +156,36 @@ let test_validate () =
 
 (* ---------- Reconcile ---------- *)
 
+(* id of a freshly reconciled note at [relative_path] *)
+let id_at relative_path body =
+  let reconciled = Reconcile.reconcile_content ~today:"2026-06-28" ~relative_path body in
+  let frontmatter, _ = Frontmatter.parse reconciled in
+  match frontmatter with Some f -> scalar f "id" | None -> "<none>"
+
 let test_reconcile () =
   let note = "# My Title\n\nThis is the first prose line.\n\nMore.\n" in
   let reconciled =
-    Reconcile.reconcile_content ~today:"2026-06-28" ~area:"projects" ~name_hint:"my-title" note
+    Reconcile.reconcile_content ~today:"2026-06-28" ~relative_path:"projects/my-title.md" note
   in
   let frontmatter_option, body = Frontmatter.parse reconciled in
   expect_equal "body byte-identical after reconcile" body note;
   (match frontmatter_option with
   | None -> check "frontmatter added" false
   | Some frontmatter ->
-    expect_equal "id derived from area+type+title" (scalar frontmatter "id") "projects-note-my-title";
+    expect_equal "id derived from path" (scalar frontmatter "id") "projects-note-my-title";
     expect_equal "type defaults to note" (scalar frontmatter "type") "note";
     expect_equal "owner defaults to human" (scalar frontmatter "owner") "human";
     expect_equal "summary from first prose" (scalar frontmatter "summary") "This is the first prose line.";
     expect_equal "updated set to today" (scalar frontmatter "updated") "2026-06-28");
   (* idempotency *)
   let second_pass =
-    Reconcile.reconcile_content ~today:"2099-01-01" ~area:"projects" ~name_hint:"my-title" reconciled
+    Reconcile.reconcile_content ~today:"2099-01-01" ~relative_path:"projects/my-title.md" reconciled
   in
   expect_equal "reconcile is idempotent" second_pass reconciled;
   (* additive: existing values preserved *)
   let typed_note = "---\ntype: decision\nowner: shared\n---\n# Pick X\n\nWe choose X.\n" in
   let typed_reconciled =
-    Reconcile.reconcile_content ~today:"2026-06-28" ~area:"areas" ~name_hint:"pick-x" typed_note
+    Reconcile.reconcile_content ~today:"2026-06-28" ~relative_path:"areas/pick-x.md" typed_note
   in
   let typed_frontmatter, _ = Frontmatter.parse typed_reconciled in
   (match typed_frontmatter with
@@ -194,12 +200,33 @@ let test_reconcile () =
     [ ("type", Frontmatter.Scalar "decision"); ("summary", Frontmatter.Scalar "T") ]
   in
   let scaffolded =
-    Reconcile.backfill ~today:"2026-06-28" ~area:"notes" ~name_hint:"adopt-x" (Some seed_frontmatter)
+    Reconcile.backfill ~today:"2026-06-28" ~area:"notes" ~slug:"adopt-x" (Some seed_frontmatter)
       "# Adopt X\n\nbody\n"
   in
   expect_equal "seed: id uses seeded type" (scalar scaffolded "id") "notes-decision-adopt-x";
   expect_equal "seed: status from decision default" (scalar scaffolded "status") "proposed";
   expect_equal "seed: summary preserved" (scalar scaffolded "summary") "T"
+
+let test_id_scheme () =
+  expect_equal "area: top folder" (Reconcile.area_of_path "lokalise/docs/git.md") "lokalise";
+  expect_equal "area: root file" (Reconcile.area_of_path "Home.md") "root";
+  expect_equal "slug: shallow file drops parent" (Reconcile.id_slug "tools/vim.md") "vim";
+  expect_equal "slug: root file" (Reconcile.id_slug "Home.md") "home";
+  expect_equal "slug: parent + filename"
+    (Reconcile.id_slug "lokalise/teams/growth/overview.md") "growth-overview";
+  expect_equal "slug: index keeps parent"
+    (Reconcile.id_slug "lokalise/docs/website-strapi/experimentation/index.md")
+    "experimentation-index";
+  (* the core fix: same filename in different folders -> distinct ids *)
+  let zustand = id_at "deep-dives/zustand/MISSION.md" "# Mission\n\nx\n" in
+  let spectre = id_at "deep-dives/spectre/MISSION.md" "# Mission\n\nx\n" in
+  expect_equal "zustand mission id" zustand "deep-dives-note-zustand-mission";
+  expect_equal "spectre mission id" spectre "deep-dives-note-spectre-mission";
+  check "same-named notes get distinct ids" (zustand <> spectre);
+  (* id is path-derived, not H1-derived: same H1 in different folders stays distinct *)
+  let a = id_at "lokalise/teams/growth/overview.md" "# Overview\n\nx\n" in
+  let b = id_at "lokalise/teams/web-turbo/overview.md" "# Overview\n\nx\n" in
+  check "shared H1 still yields distinct ids" (a <> b)
 
 let test_links () =
   let resolve = function
@@ -239,7 +266,20 @@ let test_index () =
   check "index json has count 2" (Json.member "count" json = Some (Json.Number 2.));
   let moc = Index.to_moc entries in
   check "moc groups note type" (contains moc "## note");
-  check "moc links by path" (contains moc "(notes/foo.md)")
+  check "moc links by path" (contains moc "(notes/foo.md)");
+  (* duplicate-id guard *)
+  expect_equal "no duplicate ids in clean set"
+    (string_of_int (List.length (Index.find_duplicate_ids entries))) "0";
+  let clashing =
+    Index.entries_of_notes
+      [ ("a/x.md", "---\nid: shared-note-x\ntype: note\nowner: human\nstatus: draft\nsummary: a\nupdated: 2026-06-28\n---\n# X\n");
+        ("b/x.md", "---\nid: shared-note-x\ntype: note\nowner: human\nstatus: draft\nsummary: b\nupdated: 2026-06-28\n---\n# X\n") ]
+  in
+  (match Index.find_duplicate_ids clashing with
+  | [ (id, paths) ] ->
+    expect_equal "duplicate id reported" id "shared-note-x";
+    expect_equal "both colliding paths listed" (string_of_int (List.length paths)) "2"
+  | _ -> check "duplicate id reported" false)
 
 let () =
   test_slug ();
@@ -248,6 +288,7 @@ let () =
   test_frontmatter ();
   test_validate ();
   test_reconcile ();
+  test_id_scheme ();
   test_links ();
   test_index ();
   if !failures = 0 then Printf.printf "OK: %d checks passed\n" !total

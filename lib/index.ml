@@ -66,6 +66,22 @@ let entries_of_notes (notes : (string * string) list) : entry list =
   |> List.filter_map (fun (path, content) -> entry_of_note ~path ~content)
   |> List.sort (fun left right -> compare left.id right.id)
 
+(* Ids must be unique - the index is an id -> path map. Returns each id that is
+   shared by more than one note, with the colliding paths, so the CLI can fail
+   loudly rather than emit a corrupt index. *)
+let find_duplicate_ids (entries : entry list) : (string * string list) list =
+  let table = Hashtbl.create 64 in
+  List.iter
+    (fun entry ->
+      let existing = try Hashtbl.find table entry.id with Not_found -> [] in
+      Hashtbl.replace table entry.id (entry.path :: existing))
+    entries;
+  Hashtbl.fold
+    (fun id paths accumulator ->
+      if List.length paths > 1 then (id, List.sort compare paths) :: accumulator else accumulator)
+    table []
+  |> List.sort compare
+
 (* --- emit index.json --- *)
 
 let json_of_entry entry : Json.t =

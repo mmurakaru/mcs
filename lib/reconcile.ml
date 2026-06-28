@@ -44,17 +44,38 @@ let resolve_type frontmatter =
     match Taxonomy.doc_type_of_string text with Some doc_type -> doc_type | None -> Taxonomy.Note)
   | None -> Taxonomy.Note
 
+(* The top-level area for a note's id is its first path segment (a PARA-style
+   folder), or "root" for a file directly at the vault root. *)
+let area_of_path relative_path =
+  match String.index_opt relative_path '/' with
+  | Some separator -> String.sub relative_path 0 separator
+  | None -> "root"
+
+(* The id slug for a note: its immediate parent folder plus filename, slugified.
+   The parent is dropped when the file sits directly in its area folder (or at the
+   root), so shallow files stay short. Path-derived rather than title-derived, so
+   ids are unique across same-named files in different folders and stable when a
+   title is later edited. *)
+let id_slug relative_path =
+  let segments = String.split_on_char '/' relative_path in
+  let stem name = Slug.slugify (Filename.remove_extension name) in
+  match List.rev segments with
+  | [] -> ""
+  | [ file ] -> stem file
+  | file :: parent :: _ ->
+    let area = List.hd segments in
+    if parent = area then stem file else Printf.sprintf "%s-%s" (Slug.slugify parent) (stem file)
+
 (* Backfill the lean-required set without ever overwriting an existing value.
-   [area] seeds the id prefix; [name_hint] (e.g. the filename stem) is the slug
-   source when the body has no level-1 heading. *)
-let backfill ~today ~area ~name_hint (frontmatter_option : Frontmatter.t option) (body : string)
-    : Frontmatter.t =
+   [area] seeds the id prefix; [slug] is the (path-derived) id slug. *)
+let backfill ~today ~area ~slug (frontmatter_option : Frontmatter.t option) (body : string) :
+    Frontmatter.t =
   let frontmatter = Option.value frontmatter_option ~default:[] in
   let doc_type = resolve_type frontmatter in
-  let title = match first_heading_title body with Some heading -> heading | None -> name_hint in
-  let slug = Slug.slugify title in
+  let title = match first_heading_title body with Some heading -> heading | None -> slug in
   let identifier =
-    Printf.sprintf "%s-%s-%s" (Slug.slugify area) (Taxonomy.string_of_doc_type doc_type) slug
+    Printf.sprintf "%s-%s-%s" (Slug.slugify area) (Taxonomy.string_of_doc_type doc_type)
+      (Slug.slugify slug)
   in
   let summary =
     match first_prose_line body with Some line -> truncate_summary line | None -> title
@@ -70,12 +91,16 @@ let backfill ~today ~area ~name_hint (frontmatter_option : Frontmatter.t option)
   |> (fun frontmatter -> set_default frontmatter "summary" (Scalar summary))
   |> fun frontmatter -> set_default frontmatter "updated" (Scalar today)
 
-(* Reconcile a whole file's content: parse, backfill, re-render. The body is the
-   byte-exact substring returned by the parser, so prose is never mutated. A
-   second pass over the result is a fixed point (idempotent). *)
-let reconcile_content ~today ~area ~name_hint (content : string) : string =
+(* Reconcile a whole file's content: parse, backfill, re-render. [relative_path]
+   (vault-root-relative) determines the id's area + slug. The body is the byte-exact
+   substring returned by the parser, so prose is never mutated. A second pass over
+   the result is a fixed point (idempotent). *)
+let reconcile_content ~today ~relative_path (content : string) : string =
   let frontmatter_option, body = Frontmatter.parse content in
-  let frontmatter = backfill ~today ~area ~name_hint frontmatter_option body in
+  let frontmatter =
+    backfill ~today ~area:(area_of_path relative_path) ~slug:(id_slug relative_path)
+      frontmatter_option body
+  in
   Frontmatter.render frontmatter body
 
 (* --- link-style conversion (portability) --- *)

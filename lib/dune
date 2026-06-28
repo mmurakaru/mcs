@@ -1,3 +1,12 @@
 (library
  (name mcs)
  (wrapped false))
+
+; Bake the version into the binary. CI sets MCS_VERSION to the release tag;
+; a plain `dune build` falls back to "dev".
+(rule
+ (target version.ml)
+ (action
+  (with-stdout-to
+   version.ml
+   (echo "let value = \"%{env:MCS_VERSION=dev}\"\n"))))

@@ -93,7 +93,7 @@ tools can read them.
 1. **Backfill** missing required frontmatter, additively (never overwrite a value
    the human set). Default `type` is `note`; defaults for `owner`/`status` follow
    the type.
-2. **Rebuild** `index.json` (machine) and `index.md` (human MOC).
+2. **Rebuild** `index.json` (machine) and `_index.md` (human MOC).
 3. **Queue proposals** - orphans, likely contradictions, stale claims, missing
    concept pages - as append-only entries in a `log` note. Never act on them in
    the safe tier; that is the human-supervised `/mcs` tier's job.
@@ -104,7 +104,7 @@ The pass is idempotent: running it twice over an unchanged vault changes nothing
 
 ```
 mcs validate [path]                       # schema-check required frontmatter (no writes; the hook)
-mcs index [path]                          # rebuild index.json + index.md
+mcs index [path]                          # rebuild index.json + _index.md
 mcs scaffold <type> "<title>" [--area A]  # create a new typed note
 mcs reconcile [path] [--convert-links S]  # additive backfill + index rebuild
 ```

@@ -37,6 +37,8 @@ jobs:
 
       - name: Build
         run: opam exec -- dune build --release
+        env:
+          MCS_VERSION: ${{ github.ref_name }}
 
       - name: Test
         run: opam exec -- dune test
@@ -52,3 +54,6 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: dist/mcs-${{ matrix.target }}
+          # tags with a pre-release suffix (e.g. v0.1.0-rc.1) publish as a prerelease
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true

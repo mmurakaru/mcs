@@ -45,14 +45,6 @@ let rec make_directories directory =
     make_directories (Filename.dirname directory);
     try Unix.mkdir directory 0o755 with Unix.Unix_error (Unix.EEXIST, _, _) -> ())
 
-(* The id-prefix area is the note's top-level folder (PARA), or "root". *)
-let area_of_relative relative_path =
-  match String.index_opt relative_path '/' with
-  | Some separator -> String.sub relative_path 0 separator
-  | None -> "root"
-
-let name_hint_of_relative relative_path = Reconcile.basename_without_extension relative_path
-
 let load_config root = Config.load (Filename.concat root "mcs.config.json")
 
 (* relative path from the directory of [from_path] to [to_path], both root-relative *)
@@ -102,9 +94,24 @@ let write_index root config entries =
     (Json.to_string ~pretty:true json ^ "\n");
   write_file (Filename.concat root config.Config.index_moc_path) (Index.to_moc entries)
 
+(* Ids must be unique (the index is an id -> path map). Report collisions and bail
+   before writing a corrupt index; the fix is an explicit `id:` on one of the notes. *)
+let ensure_unique_ids entries =
+  match Index.find_duplicate_ids entries with
+  | [] -> ()
+  | duplicates ->
+    Printf.eprintf "duplicate ids (set an explicit `id:` on one of each set):\n";
+    List.iter
+      (fun (id, paths) ->
+        Printf.eprintf "  %s\n" id;
+        List.iter (fun path -> Printf.eprintf "    - %s\n" path) paths)
+      duplicates;
+    exit 1
+
 let run_index root =
   let config = load_config root in
   let entries = Index.build ~config ~root in
+  ensure_unique_ids entries;
   write_index root config entries;
   Printf.printf "indexed %d notes -> %s + %s\n" (List.length entries) config.Config.index_path
     config.Config.index_moc_path
@@ -145,7 +152,7 @@ let run_scaffold arguments =
         [ ("type", Frontmatter.Scalar type_string); ("summary", Frontmatter.Scalar title) ]
       in
       let frontmatter =
-        Reconcile.backfill ~today:(today ()) ~area:!area ~name_hint:slug (Some seed_frontmatter) body
+        Reconcile.backfill ~today:(today ()) ~area:!area ~slug (Some seed_frontmatter) body
       in
       let content = Frontmatter.render frontmatter body in
       let path =
@@ -188,10 +195,7 @@ let run_reconcile root convert_links =
     (fun relative_path ->
       let full_path = Filename.concat root relative_path in
       let content = read_file full_path in
-      let reconciled =
-        Reconcile.reconcile_content ~today ~area:(area_of_relative relative_path)
-          ~name_hint:(name_hint_of_relative relative_path) content
-      in
+      let reconciled = Reconcile.reconcile_content ~today ~relative_path content in
       if reconciled <> content then (
         write_file full_path reconciled;
         incr changed_count))
@@ -226,6 +230,7 @@ let run_reconcile root convert_links =
       (Config.string_of_link_style style));
   (* 3. rebuild index from the reconciled tree *)
   let entries = Index.build ~config ~root in
+  ensure_unique_ids entries;
   write_index root config entries;
   Printf.printf "reconciled %d files (%d changed), indexed %d notes\n" (List.length files)
     !changed_count (List.length entries)
@@ -235,7 +240,7 @@ let usage () =
     "mcs - a personal wiki bookkeeper\n\n\
      usage:\n\
     \  mcs validate [path]                       schema-check required frontmatter (no writes)\n\
-    \  mcs index [path]                          rebuild index.json + index.md\n\
+    \  mcs index [path]                          rebuild index.json + _index.md\n\
     \  mcs scaffold <type> \"<title>\" [opts]      create a new typed note\n\
     \  mcs reconcile [path] [--convert-links S]  backfill frontmatter + rebuild index\n\n\
      types: tutorial how-to reference explanation decision note entity concept index log\n\
@@ -266,6 +271,7 @@ let () =
     in
     parse rest;
     run_reconcile !root !convert
+  | _ :: ("--version" | "version") :: _ -> print_endline Version.value
   | _ :: ("--help" | "-h" | "help") :: _ -> usage ()
   | [ _ ] -> usage ()
   | _ ->

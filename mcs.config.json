@@ -4,7 +4,7 @@
   "paths": {
     "root": ".",
     "index": "index.json",
-    "indexMoc": "index.md",
+    "indexMoc": "_index.md",
     "log": "log.md"
   },
   "ignore": [".git", "_opam", "_build", "node_modules", ".obsidian"]

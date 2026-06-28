@@ -74,7 +74,7 @@ The engine has **no runtime dependencies** beyond the OCaml standard library.
 
 ```
 mcs validate [path]                       # schema-check required frontmatter (no writes)
-mcs index [path]                          # rebuild index.json + index.md
+mcs index [path]                          # rebuild index.json + _index.md
 mcs scaffold <type> "<title>" [--area A]  # create a new typed note
 mcs reconcile [path] [--convert-links S]  # additive backfill + index rebuild
 ```
