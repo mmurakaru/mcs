@@ -1,0 +1,11 @@
+{
+  "linkStyle": "hybrid",
+  "areas": ["projects", "areas", "resources", "archive"],
+  "paths": {
+    "root": ".",
+    "index": "index.json",
+    "indexMoc": "index.md",
+    "log": "log.md"
+  },
+  "ignore": [".git", "_opam", "_build", "node_modules", ".obsidian"]
+}

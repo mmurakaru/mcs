@@ -1,0 +1,51 @@
+name: release
+
+# Build prebuilt single binaries so adopters need no OCaml toolchain.
+# Triggered by pushing a version tag (e.g. v0.1.0).
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: macos-arm64
+          - os: macos-13
+            target: macos-x64
+          - os: ubuntu-latest
+            target: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.2"
+
+      - name: Build
+        run: opam exec -- dune build --release
+
+      - name: Test
+        run: opam exec -- dune test
+
+      - name: Stage binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp _build/default/bin/mcs.exe "dist/mcs-${{ matrix.target }}"
+          chmod +x "dist/mcs-${{ matrix.target }}"
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/mcs-${{ matrix.target }}

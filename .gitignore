@@ -1,0 +1,6 @@
+_build/
+_opam/
+dist/
+*.install
+*.merlin
+.DS_Store

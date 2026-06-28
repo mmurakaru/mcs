@@ -1,0 +1,16 @@
+# mcs scheduled reconcile (safe tier) - example crontab entry.
+#
+# The safe tier is additive only: it backfills frontmatter, rebuilds the index,
+# and (when implemented) queues proposals to log.md. It NEVER edits prose.
+#
+# Copy the line below into your crontab (`crontab -e`), adjusting VAULT and the
+# path to the mcs binary. This example runs every day at 07:00.
+#
+#   0 7 * * *  cd /path/to/your-vault && /usr/local/bin/mcs reconcile . >> .mcs/reconcile.log 2>&1
+#
+# Notes:
+# - Use an absolute path to the mcs binary; cron has a minimal PATH.
+# - Commit the result on a branch if you want the diff reviewable before it lands
+#   on main; the safe tier is designed to produce a clean, additive-only diff.
+# - For launchd on macOS, wrap the same command in a LaunchAgent plist with
+#   StartCalendarInterval instead of cron.

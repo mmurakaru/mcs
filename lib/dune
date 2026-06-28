@@ -1,0 +1,3 @@
+(library
+ (name mcs)
+ (wrapped false))

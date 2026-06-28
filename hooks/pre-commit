@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+# mcs pre-commit hook: validate-only (no writes).
+#
+# Fails the commit if any staged markdown note has malformed frontmatter
+# (i.e. a note that has a frontmatter block but is missing or has invalid
+# required fields). A note with no frontmatter at all is "not yet reconciled",
+# not an error, so frictionless capture still commits cleanly.
+#
+# Install: ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
+#
+# Resolve the mcs binary: prefer one on PATH, else the dune build output.
+set -eu
+
+if command -v mcs >/dev/null 2>&1; then
+  MCS=mcs
+elif [ -x "_build/default/bin/mcs.exe" ]; then
+  MCS="_build/default/bin/mcs.exe"
+else
+  echo "mcs: binary not found (install a release binary or run 'dune build'); skipping validation" >&2
+  exit 0
+fi
+
+# Validate the whole vault (validate is cheap and read-only).
+"$MCS" validate .

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mcs/frontmatter.schema.json",
+  "title": "mcs note frontmatter",
+  "description": "Language-neutral contract for mcs note frontmatter. The required set is what `mcs validate` enforces after a reconcile pass. A note with no frontmatter block is treated as 'not yet reconciled', not invalid.",
+  "type": "object",
+  "required": ["id", "type", "owner", "status", "summary", "updated"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable identifier, never renumbered. Format: <area>-<type>-<slug> (MADR convention).",
+      "pattern": "^[a-z0-9]+-[a-z_]+-[a-z0-9-]+$"
+    },
+    "type": {
+      "type": "string",
+      "description": "What a note is (orthogonal to which folder it lives in). Each value traces to a published taxonomy.",
+      "enum": [
+        "tutorial",
+        "how-to",
+        "reference",
+        "explanation",
+        "decision",
+        "note",
+        "entity",
+        "concept",
+        "index",
+        "log"
+      ]
+    },
+    "owner": {
+      "type": "string",
+      "description": "Who maintains the note.",
+      "enum": ["human", "agent", "shared"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Lifecycle state. MADR statuses collapse FDR + RFC into the `decision` type by status.",
+      "enum": [
+        "draft",
+        "current",
+        "proposed",
+        "accepted",
+        "superseded",
+        "deprecated"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-line synopsis. Agent-backfilled from the note's first prose line when absent.",
+      "minLength": 1
+    },
+    "updated": {
+      "type": "string",
+      "description": "Date of last reconcile (ISO 8601, YYYY-MM-DD).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Optional free-form tags.",
+      "items": { "type": "string" }
+    },
+    "related": {
+      "type": "array",
+      "description": "Optional cross-links by stable id (the portable link layer).",
+      "items": { "type": "string" }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Optional source references (URLs or citations).",
+      "items": { "type": "string" }
+    },
+    "last_verified": {
+      "type": "string",
+      "description": "Optional date a claim was last checked against its source (ISO 8601).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    }
+  }
+}
