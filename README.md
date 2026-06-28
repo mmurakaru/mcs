@@ -1,10 +1,7 @@
-# mcs - Man-Computer Symbiosis
+# mcs
 
-> A tool-agnostic personal wiki co-authored by human and agent - typed,
-> cross-linked, and kept current.
-
-mcs turns a pile of markdown notes into a scalable, navigable wiki for both humans
-and agents. **You write; the machine keeps the books.** You jot notes freely, with
+mcs makes a growing collection of markdown notes navigable - for both humans and
+agents - without changing how you write. **You write; the machine keeps the books.** You jot notes freely, with
 no ceremony and no prompting. An agent acts as a *bookkeeper* that periodically
 reconciles whatever you added - typing it, backfilling frontmatter, cross-linking,
 indexing, and flagging contradictions - **without ever deleting your notes or
